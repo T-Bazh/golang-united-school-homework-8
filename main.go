@@ -10,14 +10,18 @@ import (
 )
 
 const (
-	id         = "id"
-	item       = "item"
-	fileName   = "fileName"
-	operation  = "operation"
-	addOp      = "add"
-	findByIdOp = "findById"
-	removeOp   = "remove"
-	listOp     = "list"
+	id                   = "id"
+	item                 = "item"
+	userFileName         = "fileName"
+	operation            = "operation"
+	addOp                = "add"
+	findByIdOp           = "findById"
+	removeOp             = "remove"
+	listOp               = "list"
+	userNotFoundMsg      = "User with id %s was not found"
+	marshalingErrorMsg   = "Error while marshaling users to json file: %w"
+	unmarshalingErrorMsg = "Error to unmarshal a user defined with JSON: %w"
+	openFileErrorMsg     = "Error while opening file with users: %w"
 )
 
 type Arguments map[string]string
@@ -29,16 +33,16 @@ type User struct {
 
 func parseArgs() Arguments {
 	flagOperation := flag.String(operation, "", "Allowed values: [add|findById|remove|list]")
-	flagFileName := flag.String(fileName, "", "Path to the JSON file with user's data.")
+	flagFileName := flag.String(userFileName, "", "Path to the JSON file with user's data.")
 	flagItem := flag.String(item, "", "User JSON, for example {''id'': ''1'', ''email'': ''email@test.com'', ''age'': 23}")
 	flagId := flag.String(id, "", "User Identifier, should be greater then zero")
 	flag.Parse()
 
 	return Arguments{
-		operation: *flagOperation,
-		item:      *flagItem,
-		id:        *flagId,
-		fileName:  *flagFileName}
+		operation:    *flagOperation,
+		item:         *flagItem,
+		id:           *flagId,
+		userFileName: *flagFileName}
 }
 
 func Perform(args Arguments, writer io.Writer) error {
@@ -46,7 +50,7 @@ func Perform(args Arguments, writer io.Writer) error {
 	if len(operationArg) == 0 {
 		return errors.New("-operation flag has to be specified")
 	}
-	fileNameArg := args[fileName]
+	fileNameArg := args[userFileName]
 	if len(fileNameArg) == 0 {
 		return errors.New("-fileName flag has to be specified")
 	}
@@ -93,7 +97,7 @@ func removeUser(userId, fileName string, writer io.Writer) error {
 		}
 	}
 	if !found {
-		return fmt.Errorf("User with id %s was not found", userId)
+		return fmt.Errorf(userNotFoundMsg, userId)
 	}
 	err = saveUsersToFile(users, fileName)
 	if err != nil {
@@ -109,7 +113,7 @@ func listUsers(fileName string, writer io.Writer) error {
 	}
 	usersData, err := json.Marshal(users)
 	if err != nil {
-		return fmt.Errorf("Error while marshaling users to json file: %w", err)
+		return fmt.Errorf(marshalingErrorMsg, err)
 	}
 	writer.Write(usersData)
 	return nil
@@ -128,11 +132,11 @@ func findUserById(idArg, fileName string, writer io.Writer) error {
 	}
 	if user.Id == "" {
 		writer.Write([]byte(""))
-		return fmt.Errorf("User with id %s was not found", idArg)
+		return fmt.Errorf(userNotFoundMsg, idArg)
 	}
 	userData, err := json.Marshal(user)
 	if err != nil {
-		return fmt.Errorf("Error while marshaling users to json file: %w", err)
+		return fmt.Errorf(marshalingErrorMsg, err)
 	}
 	writer.Write(userData)
 	return nil
@@ -142,7 +146,7 @@ func addUser(item, fileName string, writer io.Writer) error {
 	var pendingUser User
 	err := json.Unmarshal([]byte(item), &pendingUser)
 	if err != nil {
-		return fmt.Errorf("Error to unmarshal a user defined with JSON: %w", err)
+		return fmt.Errorf(unmarshalingErrorMsg, err)
 	}
 	users, err := loadUsersFromFile(fileName)
 	if err != nil {
@@ -165,7 +169,7 @@ func addUser(item, fileName string, writer io.Writer) error {
 func loadUsersFromFile(fileName string) ([]User, error) {
 	file, err := os.OpenFile(fileName, os.O_RDWR|os.O_CREATE, 0755)
 	if err != nil {
-		return nil, fmt.Errorf("Error while opening file with users: %w", err)
+		return nil, fmt.Errorf(openFileErrorMsg, err)
 	}
 	defer file.Close()
 
@@ -177,7 +181,7 @@ func loadUsersFromFile(fileName string) ([]User, error) {
 	if len(usersData) > 0 {
 		err = json.Unmarshal(usersData, &users)
 		if err != nil {
-			return nil, fmt.Errorf("Error while unmarshaling users from json file: %w", err)
+			return nil, fmt.Errorf(unmarshalingErrorMsg, err)
 		}
 	}
 	return users, nil
@@ -186,13 +190,13 @@ func loadUsersFromFile(fileName string) ([]User, error) {
 func saveUsersToFile(users []User, fileName string) error {
 	file, err := os.OpenFile(fileName, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
 	if err != nil {
-		return fmt.Errorf("Error while opening file with users: %w", err)
+		return fmt.Errorf(openFileErrorMsg, err)
 	}
 	defer file.Close()
 
 	jsonData, err := json.Marshal(users)
 	if err != nil {
-		return fmt.Errorf("Error while marshaling users to json file: %w", err)
+		return fmt.Errorf(marshalingErrorMsg, err)
 	}
 	_, err = file.Write(jsonData)
 	if err != nil {
