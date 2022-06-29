@@ -18,7 +18,7 @@ const (
 	findByIdOp           = "findById"
 	removeOp             = "remove"
 	listOp               = "list"
-	userNotFoundMsg      = "User with id %s was not found"
+	userNotFoundMsg      = "Item with id %s not found"
 	marshalingErrorMsg   = "Error while marshaling users to json file: %w"
 	unmarshalingErrorMsg = "Error to unmarshal a user defined with JSON: %w"
 	openFileErrorMsg     = "Error while opening file with users: %w"
@@ -154,7 +154,7 @@ func addUser(item, fileName string, writer io.Writer) error {
 	}
 	for _, user := range users {
 		if user.Id == pendingUser.Id {
-			writer.Write([]byte("User with id " + user.Id + " already exists"))
+			writer.Write([]byte("Item with id " + user.Id + " already exists"))
 			return nil
 		}
 	}
